@@ -69,11 +69,17 @@ static void MX_AES_Init(void);
 /* USER CODE BEGIN 0 */
 uint8_t plain_text[32] = "hello1234567890ABCDEFGHIJKLMNOP"; // pad to 16 bytes
 uint8_t encrypted_text[32];
-
+uint8_t decrypted_text[32];
 uint8_t user_encrypted_text[32];
 char rx_buffer[32];
 // Function to convert a byte to two ASCII hex characters
 
+void ByteToHex(uint8_t byte, char *hex)
+{
+    const char hex_chars[] = "0123456789ABCDEF";
+    hex[0] = hex_chars[(byte >> 4) & 0x0F];
+    hex[1] = hex_chars[byte & 0x0F];
+}
 
 /* USER CODE END 0 */
 
@@ -112,8 +118,25 @@ int main(void)
   // Encrypt
   if (HAL_CRYP_AESCBC_Encrypt(&hcryp,plain_text,32 , encrypted_text, HAL_MAX_DELAY) != HAL_OK) {
   	                             Error_Handler();
-  	                         }
+                         }
+  if (HAL_CRYP_AESCBC_Decrypt(&hcryp, encrypted_text, 32, decrypted_text, HAL_MAX_DELAY) != HAL_OK) {
+  	                            Error_Handler();
+  }
+  char hex[3]; // 2 hex digits + null terminator
+     hex[2] = '\0'; // for safety
 
+     HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Encrypted Text: ", strlen("Encrypted Text: "), HAL_MAX_DELAY);
+     for (int i = 0; i < 32; i++) {
+  	   ByteToHex(encrypted_text[i], hex);
+  	   HAL_UART_Transmit(&hlpuart1, (uint8_t *)hex, 2, HAL_MAX_DELAY);
+  	   HAL_UART_Transmit(&hlpuart1, (uint8_t *)" ", 1, HAL_MAX_DELAY);
+     }
+
+   HAL_UART_Transmit(&hlpuart1, (uint8_t *)"\n\r", 2, HAL_MAX_DELAY);
+
+   HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Decrypted Text: ", strlen("Decrypted Text: "), HAL_MAX_DELAY);
+   HAL_UART_Transmit(&hlpuart1, decrypted_text, 32, HAL_MAX_DELAY);
+   HAL_UART_Transmit(&hlpuart1, (uint8_t *)"\n\r", 2, HAL_MAX_DELAY);
 
 
   /* USER CODE END 2 */
@@ -128,46 +151,47 @@ int main(void)
 	  memset(rx_buffer, 0, sizeof(rx_buffer));
 	  memset(user_encrypted_text, 0, sizeof(user_encrypted_text));
 
-	  HAL_UART_Transmit(&hlpuart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+//	  HAL_UART_Transmit(&hlpuart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+//
+//	  HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Enter Password: ", strlen("Enter Password: "), HAL_MAX_DELAY);
+//	      uint8_t idx = 0;
+//	      uint8_t ch;
+//
+//	                    while (1)
+//	                    {
+//	                        // Receive one character
+//	                        HAL_UART_Receive(&hlpuart1, &ch, 1, HAL_MAX_DELAY);
+//
+//	                        // Echo the character back
+//	                        HAL_UART_Transmit(&hlpuart1, &ch, 1, HAL_MAX_DELAY);
+//
+//	                        // Store into buffer
+//	                        rx_buffer[idx++] = ch;
+//
+//	                        // Break on newline or carriage return
+//	                        if (ch == '\r' || ch == '\n' || idx >= sizeof(rx_buffer) - 1)
+//	                        {
+////	                            rx_buffer[idx] = '\0'; // Null-terminate the string
+//	                            if(idx<sizeof(rx_buffer)){
+//	                            	memset(&rx_buffer[idx],0x00,sizeof(rx_buffer)-idx);
+//	                            }
+//	                            break;
+//	                        }
+//	                    }
+//
+//
+//	                    // send a newline after the echo
+//	                    HAL_UART_Transmit(&hlpuart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
+//
+//	                    if (HAL_CRYP_AESCBC_Encrypt(&hcryp, (uint8_t*)rx_buffer, 32, user_encrypted_text, HAL_MAX_DELAY) != HAL_OK) {
+//	                             Error_Handler();
+//	                         }
+//	                    if(memcmp(user_encrypted_text,encrypted_text,32)!=0){
+//	                 	   HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Invalid Password", strlen("Invalid Password"), HAL_MAX_DELAY);
+//	                    }else{
+//	                    	HAL_UART_Transmit(&hlpuart1, (uint8_t *)"WELCOME!!", strlen("WELCOME!!"), HAL_MAX_DELAY);
+//	                    }
 
-	  HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Enter Password: ", strlen("Enter Password: "), HAL_MAX_DELAY);
-	      uint8_t idx = 0;
-	      uint8_t ch;
-
-	                    while (1)
-	                    {
-	                        // Receive one character
-	                        HAL_UART_Receive(&hlpuart1, &ch, 1, HAL_MAX_DELAY);
-
-	                        // Echo the character back
-	                        HAL_UART_Transmit(&hlpuart1, &ch, 1, HAL_MAX_DELAY);
-
-	                        // Store into buffer
-	                        rx_buffer[idx++] = ch;
-
-	                        // Break on newline or carriage return
-	                        if (ch == '\r' || ch == '\n' || idx >= sizeof(rx_buffer) - 1)
-	                        {
-//	                            rx_buffer[idx] = '\0'; // Null-terminate the string
-	                            if(idx<sizeof(rx_buffer)){
-	                            	memset(&rx_buffer[idx],0x00,sizeof(rx_buffer)-idx);
-	                            }
-	                            break;
-	                        }
-	                    }
-
-
-	                    // send a newline after the echo
-	                    HAL_UART_Transmit(&hlpuart1, (uint8_t*)"\r\n", 2, HAL_MAX_DELAY);
-
-	                    if (HAL_CRYP_AESCBC_Encrypt(&hcryp, (uint8_t*)rx_buffer, 32, user_encrypted_text, HAL_MAX_DELAY) != HAL_OK) {
-	                             Error_Handler();
-	                         }
-	                    if(memcmp(user_encrypted_text,encrypted_text,32)!=0){
-	                 	   HAL_UART_Transmit(&hlpuart1, (uint8_t *)"Invalid Password", strlen("Invalid Password"), HAL_MAX_DELAY);
-	                    }else{
-	                    	HAL_UART_Transmit(&hlpuart1, (uint8_t *)"WELCOME!!", strlen("WELCOME!!"), HAL_MAX_DELAY);
-	                    }
   }
 
   /* USER CODE END 3 */
